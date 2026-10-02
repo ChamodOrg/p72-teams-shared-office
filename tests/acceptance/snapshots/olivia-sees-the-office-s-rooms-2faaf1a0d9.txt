@@ -1,0 +1,8 @@
+Page: Rooms
+URL: http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/rooms
+- heading "Meeting Rooms"
+- button "Search available..."
+- columnheader "Room"
+- columnheader "Capacity"
+- columnheader "Location"
+- cell "No rooms yet The office has no meeting rooms in its catalog."
