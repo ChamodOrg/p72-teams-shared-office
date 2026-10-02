@@ -26,27 +26,27 @@ app is a Member; there is no administrator and no privileged role.
 ## User Stories
 
 1. As a Member, I want to sign in securely, so that bookings are attributable to
- a real person.
+a real person.
 2. As a Member, I want to see the list of meeting rooms with their capacity and
- location, so that I can choose one that fits my group.
+location, so that I can choose one that fits my group.
 3. As a Member, I want to search for the rooms that are free for a date and time
- range and that hold at least my group size, so that I only consider rooms I
- can actually book.
+range and that hold at least my group size, so that I only consider rooms I
+can actually book.
 4. As a Member, I want to book a room for a date and a start and end time, giving
- the number of attendees, so that the room is reserved for my meeting.
+the number of attendees, so that the room is reserved for my meeting.
 5. As a Member, I want a booking that clashes with an existing booking for the
- same room to be refused with a clear reason, so that two meetings never claim
- one room.
+same room to be refused with a clear reason, so that two meetings never claim
+one room.
 6. As a Member, I want a booking for more attendees than the room holds to be
- refused with a clear reason, so that I do not take a room my group will not
- fit in.
+refused with a clear reason, so that I do not take a room my group will not
+fit in.
 7. As a Member, I want my new booking to appear in my list of bookings
- immediately after I make it, without reloading the page, so that I can
- confirm the reservation was recorded.
+immediately after I make it, without reloading the page, so that I can
+confirm the reservation was recorded.
 8. As a Member, I want to cancel a booking I made, so that the room is released
- for someone else.
+for someone else.
 9. As a Member, I want to be prevented from cancelling a booking somebody else
- made, so that my meetings are not released without my knowledge.
+made, so that my meetings are not released without my knowledge.
 
 ## Product Decisions
 
@@ -74,9 +74,9 @@ a third is refused until one is cancelled or has passed.
 - Bookings are for a single day — a booking's start and end are on the same date.
 - All times are the office's local time; the app does not handle time zones.
 - Room capacity is a whole number of people. Rooms are identified by a name
-unique across the office. *assumed*
+unique across the office.
 - Cancelling a booking removes it; there is no cancellation history or audit
-trail. *assumed*
+trail.
 
 ## Out of Scope
 
