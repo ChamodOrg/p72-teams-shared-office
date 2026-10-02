@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "permissions": [
+    {
+      "resource": "rooms",
+      "component": "rooms-api",
+      "description": "The office's fixed catalog of meeting rooms",
+      "actions": [
+        { "handle": "read", "description": "Every room, with capacity and location, and its free/busy search" }
+      ]
+    },
+    {
+      "resource": "bookings",
+      "component": "rooms-api",
+      "description": "A member's own room bookings",
+      "actions": [
+        { "handle": "read", "description": "The caller's own bookings" },
+        { "handle": "create", "description": "Book a free room for a time range" },
+        { "handle": "cancel", "description": "Cancel a booking the caller made" }
+      ]
+    }
+  ],
+  "groups": [
+    { "name": "Members", "description": "Everyone in the shared office who may book a meeting room" }
+  ],
+  "roles": [
+    {
+      "name": "Member",
+      "description": "Searches rooms, books one, and manages the bookings they made.",
+      "stories": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "grants": ["rooms:read", "bookings:read", "bookings:create", "bookings:cancel"],
+      "assignTo": ["Members"]
+    }
+  ],
+  "testUsers": [
+    { "username": "test-member", "roles": ["Member"] },
+    { "username": "test-member2", "roles": ["Member"] }
+  ]
+}

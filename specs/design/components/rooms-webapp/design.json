@@ -1,0 +1,17 @@
+{
+  "name": "rooms-webapp",
+  "type": "web-application",
+  "version": "0.1.0",
+  "language": "TypeScript",
+  "buildpack": "docker",
+  "appPath": "rooms-webapp",
+  "entrypoint": "deployment/web-application",
+  "exposure": "internet",
+  "dependencies": [
+    { "kind": "component", "name": "rooms-api", "description": "Searches rooms, creates and cancels bookings, and lists the signed-in member's own bookings." },
+    { "kind": "platform-resource", "name": "user-auth", "resourceType": "thunder-app" }
+  ],
+  "description": "The single-page app every Member uses: browse the room catalog, search for a free room by time range and group size, book one, and manage their own upcoming bookings. Holds no business data itself — every read and write goes through rooms-api. Does not expose any admin or room-management screen.",
+  "stories": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "skillsPinned": ["wireframes", "react-webapp", "oxygen-ui-design-system", "thunder-authentication"]
+}

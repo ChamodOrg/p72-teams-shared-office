@@ -1,0 +1,14 @@
+title Shared Office Room Booking
+
+component rooms-webapp as "Rooms Webapp" web-application
+component rooms-api as "Rooms API" service
+component rooms-db as "Rooms Database" database
+
+east user-auth as "Thunder Auth" identity-server
+
+north -> rooms-webapp
+
+rooms-webapp -> rooms-api
+rooms-webapp -> user-auth
+rooms-api -> user-auth
+rooms-api -> rooms-db

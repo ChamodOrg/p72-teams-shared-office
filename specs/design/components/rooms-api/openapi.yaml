@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: Rooms API
+  version: 0.1.0
+servers:
+  - url: /
+paths:
+  /rooms:
+    get:
+      operationId: listRooms
+      summary: Every room, optionally filtered to those free for a range and big enough for a group
+      security:
+        - oauth2: [rooms:read]
+      parameters:
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+          description: Date to check availability against (YYYY-MM-DD)
+        - name: startTime
+          in: query
+          schema: { type: string, format: time }
+        - name: endTime
+          in: query
+          schema: { type: string, format: time }
+        - name: minCapacity
+          in: query
+          schema: { type: integer, minimum: 1 }
+          description: Only rooms whose capacity is at least this many people
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Matching rooms
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, data]
+                properties:
+                  count: { type: integer, description: total matching rooms }
+                  next: { type: string, nullable: true, description: relative URI of the next page }
+                  previous: { type: string, nullable: true, description: relative URI of the previous page }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Room' }
+        '400':
+          description: Invalid date or time range
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /me/bookings:
+    get:
+      operationId: listMyBookings
+      summary: The caller's own bookings
+      security:
+        - oauth2: [bookings:read]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: The caller's bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, data]
+                properties:
+                  count: { type: integer, description: total bookings for the caller }
+                  next: { type: string, nullable: true, description: relative URI of the next page }
+                  previous: { type: string, nullable: true, description: relative URI of the previous page }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Booking' }
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      operationId: createMyBooking
+      summary: Book a free room for a date and time range
+      security:
+        - oauth2: [bookings:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewBooking' }
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '400':
+          description: The room does not exist, the time range is invalid, or the start time is in the past
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: The booking overlaps an existing booking on the room, the attendee count exceeds the room's capacity, or the caller already holds two future bookings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /me/bookings/{bookingId}:
+    delete:
+      operationId: cancelMyBooking
+      summary: Cancel a booking the caller made
+      security:
+        - oauth2: [bookings:cancel]
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Booking cancelled
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: No such booking for the caller
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth2/authorize
+          tokenUrl: /oauth2/token
+          scopes:
+            rooms:read: Every room, and its free/busy search
+            bookings:read: The caller's own bookings
+            bookings:create: Book a free room
+            bookings:cancel: Cancel a booking the caller made
+  schemas:
+    Room:
+      type: object
+      required: [id, name, capacity, location]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        capacity: { type: integer }
+        location: { type: string }
+    NewBooking:
+      type: object
+      required: [roomId, date, startTime, endTime, attendeeCount]
+      properties:
+        roomId: { type: string }
+        date: { type: string, format: date }
+        startTime: { type: string, format: time }
+        endTime: { type: string, format: time }
+        attendeeCount: { type: integer, minimum: 1 }
+    Booking:
+      type: object
+      required: [id, roomId, roomName, date, startTime, endTime, attendeeCount, createdAt]
+      properties:
+        id: { type: string }
+        roomId: { type: string }
+        roomName: { type: string }
+        date: { type: string, format: date }
+        startTime: { type: string, format: time }
+        endTime: { type: string, format: time }
+        attendeeCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: integer, description: HTTP or application error code }
+        message: { type: string, description: short human-readable label }
+        description: { type: string, description: detailed explanation }
+        moreInfo: { type: string, description: URI to documentation }
+security:
+  - oauth2: []
