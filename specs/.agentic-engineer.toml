@@ -1,0 +1,4 @@
+apiVersion = "agentic-engineer/v1"
+name = "p72-teams-shared-office"
+createdAt = "2026-10-02T08:11:20Z"
+idea = "Teams in a shared office compete for the same handful of meeting rooms. Without\none place to see what is free and to claim it, people double-book, turn up to an\noccupied room, or book a room too small for the group they invited. The usual\nfallbacks — a wall calendar, a chat message, a spreadsheet — have no way to\nrefuse a clash, so the clash is discovered in the corridor."
