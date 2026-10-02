@@ -1,0 +1,30 @@
+apiVersion: openchoreo.dev/v1alpha1
+metadata:
+  name: rooms-api
+
+endpoints:
+  - name: http
+    type: HTTP
+    port: 9090
+    basePath: /
+    visibility:
+      - project
+      - internal
+      - external
+
+dependencies:
+  resources:
+    - ref: p72-teams-shared-c495b91a
+      envBindings:
+        dbname: ROOMS_DB_DBNAME
+        host: ROOMS_DB_HOST
+        password: ROOMS_DB_PASSWORD
+        port: ROOMS_DB_PORT
+        user: ROOMS_DB_USER
+    - ref: p72-teams-shared-e61aa769
+      envBindings:
+        client_id: USER_AUTH_CLIENT_ID
+        issuer: USER_AUTH_ISSUER
+        jwks_url: USER_AUTH_JWKS_URL
+        resource: USER_AUTH_RESOURCE
+        scopes: USER_AUTH_SCOPES
