@@ -7,11 +7,54 @@
   "appPath": "rooms-webapp",
   "entrypoint": "deployment/web-application",
   "exposure": "internet",
-  "dependencies": [
-    { "kind": "component", "name": "rooms-api", "description": "Searches rooms, creates and cancels bookings, and lists the signed-in member's own bookings." },
-    { "kind": "platform-resource", "name": "user-auth", "resourceType": "thunder-app" }
+  "stories": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
   ],
   "description": "The single-page app every Member uses: browse the room catalog, search for a free room by time range and group size, book one, and manage their own upcoming bookings. Holds no business data itself — every read and write goes through rooms-api. Does not expose any admin or room-management screen.",
-  "stories": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  "skillsPinned": ["wireframes", "react-webapp", "oxygen-ui-design-system", "thunder-authentication"]
+  "dependencies": [
+    {
+      "kind": "component",
+      "name": "rooms-api",
+      "description": "Searches rooms, creates and cancels bookings, and lists the signed-in member's own bookings.",
+      "wiring": {
+        "endpoint": {
+          "component": "p72-teams-shared-office-rooms-api",
+          "name": "http",
+          "visibility": "project",
+          "envBindings": {
+            "address": "ROOMS_API_URL"
+          }
+        }
+      }
+    },
+    {
+      "kind": "platform-resource",
+      "name": "user-auth",
+      "resourceType": "thunder-app",
+      "wiring": {
+        "ref": "p72-teams-shared-e61aa769",
+        "envBindings": {
+          "client_id": "USER_AUTH_CLIENT_ID",
+          "issuer": "USER_AUTH_ISSUER",
+          "jwks_url": "USER_AUTH_JWKS_URL",
+          "resource": "USER_AUTH_RESOURCE",
+          "scopes": "USER_AUTH_SCOPES"
+        }
+      }
+    }
+  ],
+  "skillsPinned": [
+    "wireframes",
+    "react-webapp",
+    "oxygen-ui-design-system",
+    "thunder-authentication"
+  ]
 }
