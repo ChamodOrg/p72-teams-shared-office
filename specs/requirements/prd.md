@@ -52,20 +52,20 @@ room when needed.
 ## Product Decisions
 
 - **Actors**: Employee (self-service booking) and Office Admin (manages the
-room catalog, can override any booking). *assumed*
+room catalog, can override any booking).
 - **Scope of offices**: a single shared office — rooms are not grouped by
-building or site. *assumed*
+building or site.
 - **Booking shape**: one-off bookings only, each a single date/time range; no
-recurring series in this version. *assumed*
+recurring series in this version.
 - **Capacity enforcement**: hard rule — a room whose capacity is below the
 stated group size is excluded from search results and cannot be booked for
-that group, rather than merely flagged as a warning. *assumed*
+that group, rather than merely flagged as a warning.
 - **Room suggestion**: an agent suggests the smallest free room that fits a
 requested group size and time window, ranking options so the employee isn't
-comparing a room list by hand. *assumed*
+comparing a room list by hand.
 - **Sign-in**: every user signs in via SSO through Thunder, the platform IDP.
 - **Notifications**: booking confirmation and clash refusals are shown in-app
-only; no email/SMS notifications in this version. *assumed*
+only; no email/SMS notifications in this version.
 - **Self-service enrolment**: not applicable — accounts are provisioned via
 the organization's existing directory through Thunder SSO, not self sign-up.
 
