@@ -94,5 +94,5 @@ trail.
 
 ## Open Questions
 
-- None.
+None at this time.
 
