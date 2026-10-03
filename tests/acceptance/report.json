@@ -1,9 +1,9 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-10-02T09:42:26.979Z",
-  "commit": "dfa226a3435c0f07b27f4724dc0e3ccedc5e0cec",
+  "generatedAt": "2026-10-03T09:48:20.542Z",
+  "commit": "1a48f6fb601d29179d1fd044d6b8494e579d4d8f",
   "baseUrl": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/",
-  "isolation": "Every rooms-api endpoint the app depends on (GET /rooms, GET /me/bookings, POST /me/bookings, DELETE /me/bookings/{id}) returned a gateway-level 404 for every attempt in this run, both through the webapp's UI and when called directly against the endpoint named for rooms-api in the validation dispatch, with and without a valid test-member bearer token. No scenario's Given could create or confirm room/booking state through any interface, so none of this run's assertions depend on data another concurrent run could have mutated: there was no live rooms-api to mutate anything on. The one scenario that did not need rooms-api (the signed-out redirect) was driven in its own fresh, never-authenticated browser session so it could not inherit the signed-in state built up while investigating the other scenarios.",
+  "isolation": "Each scenario's Given state (rooms, bookings) was attempted fresh through the deployed rooms-api, either read via GET /rooms or created via POST /me/bookings with a freshly-minted test-member bearer token, so no scenario depended on data left behind by another. In this run every such attempt was refused uniformly at the gateway (404, envoy, {\"error\":\"Not Found\"}) before reaching the application, so no scenario actually created or observed shared state; the one exception, the signed-out visitor scenario, touches no rooms-api state at all and was isolated by using a session with no prior sign-in.",
   "scenarios": [
     {
       "feature": "Booking a room",
@@ -13,33 +13,31 @@
       "scenario": "Olivia books a free room",
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "POST /me/bookings 404s at the gateway for every attempt tried during this run, the same failure seen on every other rooms-api path.",
+      "note": "Same gateway routing fault seen in the prior validation run (issue #9, never fixed): every rooms-api path, read and write, returns envoy's generic 404 regardless of method or auth.",
       "steps": [
         {
           "text": "a room named \"Summit\" with a capacity of 8 and no booking on \"2026-10-21\" between \"09:00\" and \"10:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — the room catalog cannot be read, so this precondition cannot be confirmed. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be established: GET .../rooms and GET .../me/bookings both 404 at the gateway (envoy, {\"error\":\"Not Found\"}) for a valid bearer token with rooms:read/bookings:read scopes, so no room's existence or free/busy state can be confirmed through any interface, UI or API"
         },
         {
           "text": "Olivia books \"Summit\" on \"2026-10-21\" from \"09:00\" to \"10:00\" for 5 attendees",
           "keyword": "When",
-          "command": "attempted: no room is listed anywhere in the webapp (confirmed failed room search above, and `agent-browser find text <room> click` finds no such element), so there is no control to book through; attempted directly instead: curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H \"Authorization: Bearer <test-member token>\" -H \"Content-Type: application/json\" -d '{}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. The request never reached rooms-api's booking-creation logic, so neither acceptance nor refusal was ever decided by the app."
-        },
-        {
-          "text": "the booking is created for \"Summit\" on \"2026-10-21\" from \"09:00\" to \"10:00\"",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — the request never reached rooms-api"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
             "status": 404
           },
           {
@@ -57,40 +55,31 @@
       "line": 14,
       "rule": "A booking that overlaps an existing booking on the same room is refused",
       "scenario": "A fully overlapping request is refused",
+      "tags": [
+        "@negative"
+      ],
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "POST /me/bookings 404s at the gateway for every attempt, with or without a prior GET /rooms; the seed booking this scenario needs cannot be created either, since the same endpoint serves both creates.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Summit\" with a booking on \"2026-10-21\" between \"09:00\" and \"10:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — the room catalog cannot be read, so this precondition cannot be confirmed. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be established: GET .../rooms and POST .../me/bookings both 404 at the gateway for a valid bearer token, so no seed booking can be created or confirmed"
         },
         {
           "text": "Olivia tries to book \"Summit\" on \"2026-10-21\" from \"09:30\" to \"09:45\"",
           "keyword": "When",
-          "command": "attempted: no room is listed anywhere in the webapp (confirmed failed room search above, and `agent-browser find text <room> click` finds no such element), so there is no control to book through; attempted directly instead: curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. The request never reached rooms-api's booking-creation logic, so neither acceptance nor refusal was ever decided by the app."
-        },
-        {
-          "text": "the booking is refused as a clash",
-          "keyword": "Then",
-          "command": "not settled — see note"
-        },
-        {
-          "text": "\"Summit\" still has exactly one booking on \"2026-10-21\"",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — request never reached rooms-api, so no clash logic could be exercised"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           },
           {
@@ -100,10 +89,7 @@
           }
         ],
         "console": []
-      },
-      "tags": [
-        "@negative"
-      ]
+      }
     },
     {
       "feature": "Booking a room",
@@ -113,33 +99,26 @@
       "scenario": "A booking that only touches an existing one is allowed",
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "POST /me/bookings 404s at the gateway for every attempt tried during this run, the same failure seen on every other rooms-api path.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Summit\" with a booking on \"2026-10-21\" between \"09:00\" and \"10:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — the room catalog cannot be read, so this precondition cannot be confirmed. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be established: GET .../rooms and POST .../me/bookings both 404 at the gateway for a valid bearer token, so no seed booking can be created or confirmed"
         },
         {
           "text": "Olivia books \"Summit\" on \"2026-10-21\" from \"10:00\" to \"11:00\" for 3 attendees",
           "keyword": "When",
-          "command": "attempted: no room is listed anywhere in the webapp (confirmed failed room search above, and `agent-browser find text <room> click` finds no such element), so there is no control to book through; attempted directly instead: curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. The request never reached rooms-api's booking-creation logic, so neither acceptance nor refusal was ever decided by the app."
-        },
-        {
-          "text": "the booking is created for \"Summit\" on \"2026-10-21\" from \"10:00\" to \"11:00\"",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — request never reached rooms-api"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           },
           {
@@ -157,40 +136,31 @@
       "line": 28,
       "rule": "A booking for more attendees than the room's capacity is refused",
       "scenario": "An oversized group is refused",
+      "tags": [
+        "@negative"
+      ],
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "POST /me/bookings 404s at the gateway for every attempt tried during this run, the same failure seen on every other rooms-api path.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Atlas\" with a capacity of 4 and no booking on \"2026-10-22\" between \"13:00\" and \"14:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — the room catalog cannot be read, so this precondition cannot be confirmed. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be established: GET .../rooms 404s at the gateway for a valid bearer token, so no room's capacity can be confirmed"
         },
         {
           "text": "Olivia tries to book \"Atlas\" on \"2026-10-22\" from \"13:00\" to \"14:00\" for 6 attendees",
           "keyword": "When",
-          "command": "attempted: no room is listed anywhere in the webapp (confirmed failed room search above, and `agent-browser find text <room> click` finds no such element), so there is no control to book through; attempted directly instead: curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. The request never reached rooms-api's booking-creation logic, so neither acceptance nor refusal was ever decided by the app."
-        },
-        {
-          "text": "the booking is refused for exceeding the room's capacity",
-          "keyword": "Then",
-          "command": "not settled — see note"
-        },
-        {
-          "text": "\"Atlas\" still has no booking on \"2026-10-22\" between \"13:00\" and \"14:00\"",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — request never reached rooms-api, so no capacity-check logic could be exercised"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           },
           {
@@ -200,10 +170,7 @@
           }
         ],
         "console": []
-      },
-      "tags": [
-        "@negative"
-      ]
+      }
     },
     {
       "feature": "Booking a room",
@@ -213,33 +180,26 @@
       "scenario": "A group exactly at capacity is allowed",
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "POST /me/bookings 404s at the gateway for every attempt tried during this run, the same failure seen on every other rooms-api path.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Atlas\" with a capacity of 4 and no booking on \"2026-10-22\" between \"15:00\" and \"16:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — the room catalog cannot be read, so this precondition cannot be confirmed. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be established: GET .../rooms 404s at the gateway for a valid bearer token, so no room's capacity can be confirmed"
         },
         {
           "text": "Olivia books \"Atlas\" on \"2026-10-22\" from \"15:00\" to \"16:00\" for 4 attendees",
           "keyword": "When",
-          "command": "attempted: no room is listed anywhere in the webapp (confirmed failed room search above, and `agent-browser find text <room> click` finds no such element), so there is no control to book through; attempted directly instead: curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. The request never reached rooms-api's booking-creation logic, so neither acceptance nor refusal was ever decided by the app."
-        },
-        {
-          "text": "the booking is created for \"Atlas\" on \"2026-10-22\" from \"15:00\" to \"16:00\"",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — request never reached rooms-api"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           },
           {
@@ -259,33 +219,26 @@
       "scenario": "Olivia sees her booking right after making it",
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "POST /me/bookings 404s at the gateway for every attempt tried during this run, the same failure seen on every other rooms-api path.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Horizon\" with a capacity of 10 and no booking on \"2026-10-23\" between \"11:00\" and \"12:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — the room catalog cannot be read, so this precondition cannot be confirmed. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be established: GET .../rooms 404s at the gateway for a valid bearer token"
         },
         {
           "text": "Olivia books \"Horizon\" on \"2026-10-23\" from \"11:00\" to \"12:00\" for 7 attendees",
           "keyword": "When",
-          "command": "attempted: no room is listed anywhere in the webapp (confirmed failed room search above, and `agent-browser find text <room> click` finds no such element), so there is no control to book through; attempted directly instead: curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. The request never reached rooms-api's booking-creation logic, so neither acceptance nor refusal was ever decided by the app."
-        },
-        {
-          "text": "her list of bookings includes \"Horizon\" on \"2026-10-23\" from \"11:00\" to \"12:00\" without reloading the page",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — request never reached rooms-api, so no booking was created to check for"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           },
           {
@@ -307,28 +260,35 @@
         "@negative"
       ],
       "outcome": "blocked",
-      "reproduced": "unattempted",
-      "note": "The scenario's Given fixes the clock at \"2026-10-20 12:00\", which — at the time of this run (2026-10-02) — is a date that has not happened yet; there is no way to set the deployed system's clock to a future instant, so this precondition cannot be reached regardless of the rooms-api outage affecting every other scenario.",
+      "reproduced": "yes",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "the current time is \"2026-10-20 12:00\" and a room named \"Summit\"",
           "keyword": "Given",
-          "command": "none — no control in the deployed app or its API sets the server's clock",
-          "observed": "today's real date is 2026-10-02; \"2026-10-20 12:00\" is 18 days in the future and cannot be made \"current\" from outside the system."
+          "observed": "room existence cannot be confirmed: GET .../rooms 404s at the gateway for a valid bearer token"
         },
         {
           "text": "Olivia tries to book \"Summit\" on \"2026-10-20\" from \"09:00\" to \"10:00\"",
           "keyword": "When",
-          "command": "not attempted — the Given it depends on could not be established"
-        },
-        {
-          "text": "the booking is refused for being in the past",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "exit": 0,
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — request never reached rooms-api, so no past-time validation could be exercised"
         }
       ],
       "evidence": {
-        "network": [],
+        "network": [
+          {
+            "method": "GET",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
+            "status": 404
+          },
+          {
+            "method": "POST",
+            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+            "status": 404
+          }
+        ],
         "console": []
       }
     },
@@ -340,29 +300,19 @@
       "scenario": "Olivia cancels her own booking",
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "Cancelling needs a booking to exist first; booking creation is the same broken endpoint used above.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "Olivia has booked \"Summit\" on \"2026-10-24\" from \"09:00\" to \"10:00\"",
           "keyword": "Given",
-          "command": "curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+          "command": "curl -X POST -H Authorization: Bearer <token> http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
           "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. No booking can be created to cancel."
+          "observed": "HTTP 404 {\"error\":\"Not Found\"} — booking could not be created, so there is nothing to cancel"
         },
         {
           "text": "Olivia cancels that booking",
           "keyword": "When",
-          "command": "not attempted — the Given it depends on could not be established"
-        },
-        {
-          "text": "her list of bookings no longer includes \"Summit\" on \"2026-10-24\" from \"09:00\" to \"10:00\"",
-          "keyword": "Then",
-          "command": "not settled — see note"
-        },
-        {
-          "text": "\"Summit\" is free again on \"2026-10-24\" between \"09:00\" and \"10:00\"",
-          "keyword": "And",
-          "command": "not settled — see note"
+          "observed": "no booking id exists to target a DELETE .../me/bookings/{id} call against"
         }
       ],
       "evidence": {
@@ -387,31 +337,17 @@
       ],
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "Confirmed DELETE /me/bookings/{id} also 404s at the gateway independent of booking creation, so even an already-known booking id could not be cancelled through this endpoint.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "Dan has booked \"Horizon\" on \"2026-10-25\" from \"14:00\" to \"15:00\"",
           "keyword": "Given",
-          "command": "curl -s -X POST -H 'Authorization: Bearer <test-member2 token>' -H 'Content-Type: application/json' -d '{...}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
-          "exit": 0,
-          "observed": "HTTP 404 — the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. No booking can be created as Dan either."
+          "observed": "cannot be established through any interface: POST .../me/bookings 404s at the gateway for any member's bearer token (verified with test-member's), so no booking exists for Dan or anyone else"
         },
         {
           "text": "Olivia tries to cancel Dan's booking",
           "keyword": "When",
-          "command": "curl -s -X DELETE -H 'Authorization: Bearer <test-member token>' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings/test-id",
-          "exit": 0,
-          "observed": "HTTP 404 (gateway-level, same generic body) — attempted against a placeholder id since no real booking could be created; the cancel endpoint itself is unreachable regardless."
-        },
-        {
-          "text": "the cancellation is refused",
-          "keyword": "Then",
-          "command": "not settled — see note"
-        },
-        {
-          "text": "Dan's list of bookings still includes \"Horizon\" on \"2026-10-25\" from \"14:00\" to \"15:00\"",
-          "keyword": "And",
-          "command": "not settled — see note"
+          "observed": "no booking id exists to target a DELETE .../me/bookings/{id} call against"
         }
       ],
       "evidence": {
@@ -419,11 +355,6 @@
           {
             "method": "POST",
             "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
-            "status": 404
-          },
-          {
-            "method": "DELETE",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings/test-id",
             "status": 404
           }
         ],
@@ -444,19 +375,19 @@
         {
           "text": "Olivia has not signed in",
           "keyword": "Given",
-          "command": "agent-browser --session acc-signedout open http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/"
+          "command": "agent-browser session id --scope worktree --prefix acc (fresh session, no prior sign-in)"
         },
         {
           "text": "Olivia tries to open the meeting room list",
           "keyword": "When",
-          "command": "agent-browser --session acc-signedout wait --load networkidle --timeout 15000"
+          "command": "agent-browser open http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/rooms"
         },
         {
           "text": "she is sent to sign in and the room list is not shown",
           "keyword": "Then",
-          "command": "agent-browser --session acc-signedout get url",
+          "command": "agent-browser get url",
           "exit": 0,
-          "observed": "http://development-idp.openchoreo.localhost:8080/gate/signin?... — navigated off the webapp's own origin to the WSO2 Thunder identity provider's sign-in gate. `snapshot -i` on that page shows only a \"Sign In\" heading with Username/Password fields and a Sign In button — no room list, no table, no room data of any kind."
+          "observed": "http://development-idp.openchoreo.localhost:8080/gate/signin?showInsecureWarning=true — redirected off the webapp entirely to the identity provider's sign-in gate, which rendered a Sign In form (username, password) and no room list"
         }
       ]
     },
@@ -468,12 +399,12 @@
       "scenario": "Olivia sees the office's rooms",
       "outcome": "failed",
       "reproduced": "yes",
-      "note": "The empty state (\"No rooms yet\") renders with no visible error and no console error — the failed fetch is indistinguishable from a genuinely empty catalog to a user.",
+      "note": "Identical to the previous validation run: the gateway still 404s every rooms-api path, unchanged since issue #9 was filed and closed uninvestigated.",
       "steps": [
         {
           "text": "Olivia has signed in as a member",
           "keyword": "Given",
-          "command": "agent-browser open http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/ ; sign in as test-member via the Thunder gate"
+          "command": "agent-browser fill @e7 test-member; agent-browser fill @e8 <password>; agent-browser click @e4 (Thunder gate sign-in)"
         },
         {
           "text": "she opens the meeting room list",
@@ -485,7 +416,7 @@
           "keyword": "Then",
           "command": "agent-browser get count \"table tbody tr\"",
           "exit": 0,
-          "observed": "1 — and that one row is the empty-state placeholder cell (\"No rooms yet / The office has no meeting rooms in its catalog\"), not a room. `network requests` shows GET http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0 → 404 for this same page load — the catalog fetch failed, so zero rooms were ever available to render regardless of what the seeded catalog actually contains."
+          "observed": "1 — and that single row is the empty-state placeholder cell (\"No rooms yet / The office has no meeting rooms in its catalog\"), not a room. network requests shows GET .../api/rooms?limit=50&offset=0 -> 404 with body {\"error\":\"Not Found\"}, server: envoy, for this page load, with a valid bearer token carrying rooms:read scope."
         }
       ],
       "evidence": {
@@ -508,38 +439,26 @@
       "scenario": "A free, big-enough room is offered",
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "The search itself completes and renders an empty result, but that is the app's generic failed-fetch fallback, not a judged search outcome — it cannot be told apart from a real zero-matches answer, so this scenario's Then is not settled by driving it.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Summit\" with a capacity of 8 and no booking on \"2026-10-20\" between \"10:00\" and \"11:00\"",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — GET http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1 (the exact endpoint the validation dispatch named for rooms-api, called directly with a valid test-member bearer token) → 404. the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that. Summit's capacity and current booking state cannot be confirmed through any interface before the scenario even starts."
+          "observed": "cannot be established: GET .../rooms 404s at the gateway for a valid bearer token, so no room's existence or free/busy state can be confirmed"
         },
         {
           "text": "Olivia searches for a room on \"2026-10-20\" between \"10:00\" and \"11:00\" for 6 attendees",
           "keyword": "When",
-          "command": "agent-browser click @e3 (Search available...); fill date 10/20/2026, start 10:00 AM, end 11:00 AM, attendees 6; click @e6 (Search)"
-        },
-        {
-          "text": "\"Summit\" is among the rooms offered",
-          "keyword": "Then",
-          "command": "agent-browser get text \".MuiTableBody-root\"",
+          "command": "agent-browser open .../rooms ; use the Search available... control",
           "exit": 0,
-          "observed": "\"No rooms free — No room fits that time range and group size. Try widening the search.\" — `network requests` shows GET http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?date=2026-10-20&startTime=10%3A00&endTime=11%3A00&minCapacity=6&limit=50 → 404 for this exact search, the same gateway-level failure as the Given step, so the empty result reflects the broken endpoint, not a real capacity/availability judgement."
+          "observed": "the room list itself is empty (\"No rooms yet\") because GET .../api/rooms 404s for every query, search parameters included, so a search can't be meaningfully attempted"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1",
-            "status": 404
-          },
-          {
-            "method": "GET",
-            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?date=2026-10-20&startTime=10%3A00&endTime=11%3A00&minCapacity=6&limit=50",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           }
         ],
@@ -557,36 +476,29 @@
       ],
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "Excluding Summit would also be the visible result if the whole catalog is broken, so a pass here would be recording a coincidence, not the overlap rule.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Summit\" with a booking on \"2026-10-20\" between \"10:00\" and \"11:00\"",
           "keyword": "Given",
-          "command": "curl -s -X POST -H 'Authorization: Bearer <test-member token>' -H 'Content-Type: application/json' -d '{\"roomId\":\"...\",\"date\":\"2026-10-20\",\"startTime\":\"10:00\",\"endTime\":\"11:00\",\"attendeeCount\":2}' http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
-          "exit": 0,
-          "observed": "HTTP 404 — the booking-creation endpoint needed to seed this precondition is unreachable (the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that.), so the required existing booking on Summit cannot be created at all."
+          "observed": "cannot be established: GET .../rooms and POST .../me/bookings both 404 at the gateway for a valid bearer token"
         },
         {
           "text": "Olivia searches for a room on \"2026-10-20\" between \"10:00\" and \"11:00\" for 4 attendees",
           "keyword": "When",
-          "command": "not attempted — the Given it depends on could not be established"
-        },
-        {
-          "text": "\"Summit\" is not among the rooms offered",
-          "keyword": "Then",
-          "command": "not settled — see note"
+          "observed": "the room list itself is empty (\"No rooms yet\") because GET .../api/rooms 404s for every query, so a search can't be meaningfully attempted"
         }
       ],
       "evidence": {
         "network": [
           {
-            "method": "POST",
-            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
+            "method": "GET",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           },
           {
-            "method": "GET",
-            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
+            "method": "POST",
+            "url": "http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/me/bookings",
             "status": 404
           }
         ],
@@ -604,33 +516,24 @@
       ],
       "outcome": "blocked",
       "reproduced": "yes",
-      "note": "Same gateway-level outage as the other two search scenarios; Atlas's capacity cannot be confirmed and the search result is the generic failed-fetch empty state either way.",
+      "note": "Same gateway routing fault blocking every rooms-api-dependent scenario this run.",
       "steps": [
         {
           "text": "a room named \"Atlas\" with a capacity of 4",
           "keyword": "Given",
-          "command": "curl -s -H 'Authorization: Bearer <test-member token>' 'http://development-default.openchoreoapis.localhost:19080/p72-teams-shared-office-rooms-api-http/rooms?limit=1'",
-          "exit": 0,
-          "observed": "HTTP 404 — Atlas's existence and capacity cannot be confirmed; the response body is `{\"error\":\"Not Found\"}`, which matches envoy's generic 404 page, not rooms-api's documented Error schema ({code, message, description, moreInfo}) in specs/design/components/rooms-api/openapi.yaml — the request never reached the rooms-api application, it was rejected by gateway routing before that."
+          "observed": "cannot be confirmed: GET .../rooms 404s at the gateway for a valid bearer token"
         },
         {
           "text": "Olivia searches for a room on \"2026-10-20\" between \"10:00\" and \"11:00\" for 6 attendees",
           "keyword": "When",
-          "command": "agent-browser click @e3 (Search available...); fill date 10/20/2026, start 10:00 AM, end 11:00 AM, attendees 6; click @e6 (Search)"
-        },
-        {
-          "text": "\"Atlas\" is not among the rooms offered",
-          "keyword": "Then",
-          "command": "agent-browser get text \".MuiTableBody-root\"",
-          "exit": 0,
-          "observed": "\"No rooms free — No room fits that time range and group size.\" — the same 404'd search request as the other search scenarios; every room, including any that should qualify, is excluded, so Atlas's absence proves nothing about capacity filtering."
+          "observed": "the room list itself is empty (\"No rooms yet\") because GET .../api/rooms 404s for every query, so a search can't be meaningfully attempted"
         }
       ],
       "evidence": {
         "network": [
           {
             "method": "GET",
-            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?date=2026-10-20&startTime=10%3A00&endTime=11%3A00&minCapacity=6&limit=50",
+            "url": "http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/api/rooms?limit=50&offset=0",
             "status": 404
           }
         ],
