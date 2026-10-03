@@ -1,8 +1,12 @@
-Page: Rooms
-URL: http://http-p72-teams-sha-development-default-5d3d9890.openchoreoapis.localhost:19080/rooms
-- heading "Meeting Rooms"
-- button "Search available..."
-- columnheader "Room"
-- columnheader "Capacity"
-- columnheader "Location"
-- cell "No rooms yet The office has no meeting rooms in its catalog."
+- generic "RoomstRoomsMy BookingsMeeting RoomsSearch available...RoomCapacityLocationNo rooms yetThe office has" [ref=e1]
+  - button "Collapse sidebar" [expanded=true, ref=e4]
+  - button "Switch to light mode" [ref=e5]
+  - button "Account" [ref=e6]
+  - link "Rooms" [ref=e8]
+  - link "My Bookings" [ref=e9]
+  - heading "Meeting Rooms" [level=1, ref=e2]
+  - button "Search available..." [ref=e3]
+  - columnheader "Room" [ref=e10]
+  - columnheader "Capacity" [ref=e11]
+  - columnheader "Location" [ref=e12]
+  - cell "No rooms yet The office has no meeting rooms in its catalog." [ref=e7]
